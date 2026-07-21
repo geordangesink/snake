@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
-import { PEAR, TILES } from './constants'
+import { Image, StyleSheet, View } from 'react-native'
+import { TILES } from './constants'
 import { SnakeGame } from './engine'
 import { theme } from '../theme'
 
@@ -26,21 +26,19 @@ export function Board({ game, size, over }: Props) {
       ]}
     >
       {game.food && (
-        <Text
+        <Image
+          source={require('../../assets/pear.png')}
+          resizeMode='contain'
           style={[
             styles.food,
             {
               left: game.food.x * tile,
               top: game.food.y * tile,
               width: tile,
-              height: tile,
-              fontSize: tile,
-              lineHeight: tile
+              height: tile
             }
           ]}
-        >
-          {PEAR}
-        </Text>
+        />
       )}
       {players.map((player) =>
         player.snake.map((seg, i) => (
@@ -70,7 +68,6 @@ const styles = StyleSheet.create({
     borderColor: theme.accent
   },
   food: {
-    position: 'absolute',
-    textAlign: 'center'
+    position: 'absolute'
   }
 })

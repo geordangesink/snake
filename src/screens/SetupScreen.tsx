@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { theme } from '../theme'
 
 type Props = {
@@ -14,7 +14,10 @@ export function SetupScreen({ onCreate, onJoin }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🍐 Snake</Text>
+      <View style={styles.titleRow}>
+        <Image source={require('../../assets/pear.png')} resizeMode='contain' style={styles.pear} />
+        <Text style={styles.title}>Snake</Text>
+      </View>
 
       <Pressable
         onPress={onCreate}
@@ -56,11 +59,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 40
+  },
+  pear: {
+    width: 34,
+    height: 46,
+    marginRight: 12
+  },
   title: {
     color: theme.accent,
     fontSize: 40,
-    fontFamily: theme.mono,
-    marginBottom: 40
+    fontFamily: theme.mono
   },
   button: {
     borderWidth: 1,

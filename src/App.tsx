@@ -1,0 +1,212 @@
+/* global __DEV__ */
+
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { Dimensions, SafeAreaView, StyleSheet, Text, View } from 'react-native'
+import { StatusBar } from 'expo-status-bar'
+import { reloadAppAsync } from 'expo-modules-core'
+import PearRuntime from 'pear-mobile'
+import FramedStream from 'framed-stream'
+import b4a from 'b4a'
+
+import bundle from './worker.bundle.js'
+import { version, upgrade, name, productName } from '../package.json'
+import { SnakeGame } from './game/engine'
+import { TILES, Direction } from './game/constants'
+import { SetupScreen } from './screens/SetupScreen'
+import { GameScreen } from './screens/GameScreen'
+import { UpdateBanner, UpdateStatus } from './components/UpdateBanner'
+import { theme } from './theme'
+
+const appName = productName ?? name
+
+// Board edge rounded down to a whole number of tiles so every cell is crisp.
+const win = Dimensions.get('window')
+const maxBoard = Math.min(win.width - 24, win.height * 0.55, 420)
+const BOARD_SIZE = Math.max(TILES, Math.floor(maxBoard / TILES) * TILES)
+
+type ScreenName = 'setup' | 'loading' | 'game'
+
+export default function App() {
+  const [screen, setScreen] = useState<ScreenName>('setup')
+  const [topic, setTopic] = useState('')
+  const [peers, setPeers] = useState(0)
+  const [over, setOver] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('')
+  const [error, setError] = useState('')
+  const [renderCount, forceRender] = useReducer((n: number) => n + 1, 0)
+
+  const pipeRef = useRef<FramedStream | null>(null)
+  const shouldReload = useRef(false)
+
+  // The worker sends JSON messages; App writes JSON commands back.
+  function sendToWorker(msg: unknown) {
+    pipeRef.current?.write(JSON.stringify(msg))
+  }
+
+  // One engine for the app's lifetime — reset on leave rather than recreated,
+  // so the message handler's closure always targets the live instance.
+  const gameRef = useRef<SnakeGame | null>(null)
+  if (gameRef.current === null) {
+    gameRef.current = new SnakeGame({
+      onChange: forceRender,
+      send: (data) => sendToWorker({ type: 'send', data }),
+      onOver: () => setOver(true)
+    })
+  }
+  const game = gameRef.current
+
+  useEffect(() => {
+    const IPC = PearRuntime.run('/worker.bundle', bundle, [
+      (!__DEV__).toString(),
+      version,
+      upgrade,
+      appName
+    ])
+    const pipe = new FramedStream(IPC)
+    pipeRef.current = pipe
+
+    pipe.on('data', (data) => {
+      let msg: any = null
+      try {
+        msg = JSON.parse(b4a.toString(data))
+      } catch {
+        return
+      }
+      handleMessage(msg)
+    })
+    pipe.on('error', (err) => console.error(err))
+
+    return () => {
+      game.destroy()
+      pipe.destroy()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function handleMessage(msg: any) {
+    switch (msg.type) {
+      case 'updating':
+        setUpdateStatus('updating')
+        break
+      case 'updated':
+        setUpdateStatus('updated')
+        break
+      case 'updateApplied':
+        if (shouldReload.current) {
+          reloadAppAsync('Pear update applied').catch((err) => {
+            setError(err instanceof Error ? err.message : String(err))
+            setUpdateStatus('failed')
+          })
+        } else {
+          setUpdateStatus('')
+        }
+        break
+      case 'ready':
+        setTopic(msg.topic)
+        game.start(msg.id, b4a.from(msg.topic, 'hex'))
+        setOver(false)
+        setScreen('game')
+        break
+      case 'connected':
+        game.addPeer(msg.id)
+        forceRender()
+        break
+      case 'disconnected':
+        game.removePeer(msg.id)
+        forceRender()
+        break
+      case 'data': {
+        let state: any = null
+        try {
+          state = JSON.parse(msg.payload)
+        } catch {
+          return
+        }
+        game.applyPeerState(state)
+        forceRender()
+        break
+      }
+      case 'update':
+        setPeers(msg.connections)
+        break
+    }
+  }
+
+  function createGame() {
+    setScreen('loading')
+    sendToWorker({ type: 'join', topic: null })
+  }
+
+  function joinGame(topicHex: string) {
+    setScreen('loading')
+    sendToWorker({ type: 'join', topic: topicHex })
+  }
+
+  function leaveGame() {
+    game.leave()
+    setOver(false)
+    setPeers(0)
+    setTopic('')
+    setScreen('setup')
+  }
+
+  function applyUpdate() {
+    shouldReload.current = true
+    setUpdateStatus('applying')
+    sendToWorker({ type: 'applyUpdate' })
+  }
+
+  // Stable across ticks so the memoized DPad does not remount its buttons.
+  const handleDirection = useCallback((dir: Direction) => {
+    gameRef.current?.setDirection(dir)
+  }, [])
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar style='light' />
+      <UpdateBanner status={updateStatus} error={error} onApply={applyUpdate} />
+
+      {screen === 'setup' && <SetupScreen onCreate={createGame} onJoin={joinGame} />}
+
+      {screen === 'loading' && (
+        <View style={styles.centered}>
+          <Text style={styles.loading}>Loading ...</Text>
+        </View>
+      )}
+
+      {screen === 'game' && (
+        <GameScreen
+          game={game}
+          size={BOARD_SIZE}
+          topic={topic}
+          peers={peers}
+          over={over}
+          version={renderCount}
+          onDirection={handleDirection}
+          onLeave={leaveGame}
+          onPlayAgain={() => {
+            setOver(false)
+            game.reset()
+          }}
+        />
+      )}
+    </SafeAreaView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.background
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  loading: {
+    color: theme.accent,
+    fontFamily: theme.mono,
+    fontSize: 18
+  }
+})

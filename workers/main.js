@@ -1,4 +1,4 @@
-const PearRuntime = require('pear-runtime')
+const PearRuntime = require('pear-runtime') // pear-runtime on desktop; pear-mobile on mobile (see package.json "imports")
 const Hyperswarm = require('hyperswarm')
 const Corestore = require('corestore')
 const goodbye = require('graceful-goodbye')
@@ -6,19 +6,26 @@ const FramedStream = require('framed-stream')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
 const path = require('bare-path')
+const storage = require('bare-storage')
+const { isBareKit } = require('which-runtime')
+
+// On desktop, Bare.argv starts with the executable path (argv[0]) and the
+// worker entry path (argv[1]); on mobile (BareKit) the passed args land at
+// argv[0..]. Offset the indices so the same arg order works on every platform.
+const argv = (index) => Bare.argv[index + (isBareKit ? 0 : 2)]
+
+const updaterConfig = {
+  updates: argv(0) !== 'false',
+  version: argv(1),
+  upgrade: argv(2),
+  name: argv(3),
+  dir: argv(4) || storage.persistent(), // argv[4] is undefined on mobile — resolve a persistent dir
+  app: argv(5) // argv[5] is undefined on mobile
+}
 
 const pipe = new FramedStream(Bare.IPC)
 
-const updaterConfig = {
-  dir: Bare.argv[2],
-  app: Bare.argv[3],
-  updates: Bare.argv[4] !== 'false',
-  version: Bare.argv[5],
-  upgrade: Bare.argv[6],
-  name: Bare.argv[7]
-}
-
-const store = new Corestore(path.join(updaterConfig.dir, 'pear-runtime/corestore'))
+const store = new Corestore(path.join(updaterConfig.dir, 'pear-runtime', 'corestore'))
 const updaterSwarm = new Hyperswarm()
 const pear = new PearRuntime({ ...updaterConfig, swarm: updaterSwarm, store })
 
@@ -84,6 +91,7 @@ pipe.on('data', async (data) => {
       peer.write(msg.data)
     }
   } else if (msg.type === 'applyUpdate') {
+    await pear.ready()
     await pear.updater.applyUpdate()
     send({ type: 'updateApplied' })
   }

@@ -62,6 +62,21 @@ export function GameScreen({
     copyTimer.current = setTimeout(() => setCopied(false), 1500)
   }
 
+  const standings = game.leaderboard()
+  // Cap the leaderboard to one compact row: the top scorers, always including
+  // the local player, with any remainder collapsed into a single "+N" chip.
+  const MAX_NAMED = 5
+  let shownStandings = standings
+  let moreCount = 0
+  if (standings.length > MAX_NAMED) {
+    shownStandings = standings.slice(0, MAX_NAMED)
+    const me = standings.find((s) => s.me)
+    if (me && !shownStandings.some((s) => s.me)) {
+      shownStandings = [...standings.slice(0, MAX_NAMED - 1), me]
+    }
+    moreCount = standings.length - MAX_NAMED
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -71,11 +86,30 @@ export function GameScreen({
         <Text style={styles.peers}>Peers: {peers}</Text>
       </View>
 
+      {standings.length > 1 ? (
+        <View style={styles.leaderboard}>
+          {shownStandings.map((s) => (
+            <View key={s.id} style={[styles.chip, s.me && styles.chipMe]}>
+              <View style={[styles.swatch, { backgroundColor: s.color }]} />
+              <Text style={styles.chipScore}>{s.score}</Text>
+            </View>
+          ))}
+          {moreCount > 0 && (
+            <View style={[styles.chip, styles.chipMore]}>
+              <Text style={styles.chipMoreText}>+{moreCount}</Text>
+            </View>
+          )}
+        </View>
+      ) : (
+        <Text style={styles.soloScore}>Score {game.myScore()}</Text>
+      )}
+
       <View style={styles.boardWrap} {...pan.panHandlers}>
         <Board game={game} size={size} over={over} version={version} />
         {over && (
           <View style={[styles.overlay, { width: size, height: size }]}>
             <Text style={styles.overText}>Game Over</Text>
+            <Text style={styles.overScore}>Score {game.myScore()}</Text>
             <Pressable
               onPress={onPlayAgain}
               style={({ pressed }) => [styles.playAgain, pressed && styles.playAgainActive]}
@@ -86,7 +120,9 @@ export function GameScreen({
         )}
       </View>
 
-      <DPad onDirection={onDirection} disabled={over} />
+      <View style={styles.controls}>
+        <DPad onDirection={onDirection} disabled={over} />
+      </View>
 
       <Pressable
         onPress={copyTopic}
@@ -130,6 +166,66 @@ const styles = StyleSheet.create({
     color: theme.accent,
     fontFamily: theme.mono,
     fontSize: 16
+  },
+  leaderboard: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 12
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(176, 217, 68, 0.3)',
+    backgroundColor: theme.panel,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    marginHorizontal: 2,
+    marginVertical: 2
+  },
+  chipMe: {
+    borderColor: theme.accent
+  },
+  chipMore: {
+    borderColor: 'rgba(176, 217, 68, 0.2)'
+  },
+  swatch: {
+    width: 10,
+    height: 10,
+    marginRight: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)'
+  },
+  chipScore: {
+    color: theme.text,
+    fontFamily: theme.mono,
+    fontSize: 12
+  },
+  chipMoreText: {
+    color: theme.accent,
+    opacity: 0.7,
+    fontFamily: theme.mono,
+    fontSize: 12
+  },
+  soloScore: {
+    color: theme.accent,
+    fontFamily: theme.mono,
+    fontSize: 16,
+    marginBottom: 12
+  },
+  controls: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    marginVertical: 8
+  },
+  overScore: {
+    color: theme.accent,
+    fontFamily: theme.mono,
+    fontSize: 18,
+    marginBottom: 20
   },
   boardWrap: {
     position: 'relative'

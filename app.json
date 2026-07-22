@@ -25,7 +25,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.snake-mobile"
+      "bundleIdentifier": "com.anonymous.snake-mobile",
+      "appleTeamId": "99564YDV39"
     },
     "android": {
       "adaptiveIcon": {

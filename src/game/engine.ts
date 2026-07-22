@@ -1,4 +1,4 @@
-import { TILES, SPEED, Coord, Direction } from './constants'
+import { TILES, SPEED, POINTS_PER_PEAR, Coord, Direction } from './constants'
 
 // The mobile game engine is a faithful port of the desktop renderer
 // (../snake/renderer/app.js). All gameplay math — snake movement, wrapping,
@@ -13,6 +13,9 @@ export type PeerState = {
   snake: Coord[]
   drop: boolean
 }
+
+// One row of the multiplayer leaderboard: a player's color and current score.
+export type Standing = { id: string; color: string; score: number; me: boolean }
 
 export class Player {
   id: string
@@ -183,6 +186,33 @@ export class SnakeGame {
     this.player = new Player(id, this)
     this.addPlayer(this.player)
     this.hooks.onChange()
+  }
+
+  // --- scoring / leaderboard ---
+  // Score is derived from snake length (each pear grows the snake by one), so it
+  // needs no extra field in the sync payload: a peer's score follows from the
+  // snake they already broadcast, keeping the wire format identical to desktop.
+  score(player: Player): number {
+    return Math.max(0, player.snake.length - 1) * POINTS_PER_PEAR
+  }
+
+  myScore(): number {
+    return this.player ? this.score(this.player) : 0
+  }
+
+  // Every player by color, highest score first. Keeps the local player visible
+  // even after they've been dropped from the board (so their final score shows).
+  leaderboard(): Standing[] {
+    const players = new Map(this.players)
+    if (this.player) players.set(this.player.id, this.player)
+    return [...players.values()]
+      .map((p) => ({
+        id: p.id,
+        color: p.color,
+        score: this.score(p),
+        me: p.id === this.player?.id
+      }))
+      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
   }
 
   addPlayer(player: Player) {

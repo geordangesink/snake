@@ -4,7 +4,8 @@ Store releases build on [EAS](https://expo.dev/eas) and go to TestFlight / Googl
 
 ## Flow
 
-- **Release (manual only):** Actions → **Build Mobile Store Releases** → Run workflow → pick the ref (the `mobile` branch or a release tag) and the profile/platforms. It builds on EAS and, when **publish** is left on, submits those exact builds to TestFlight / Play internal testing after the build finishes. Untick **publish** for a build-only run. Preview builds are never submitted (internal-distribution artifacts aren't store-accepted).
+- **Release (manual only):** Actions → **Build Mobile Store Releases** → Run workflow → pick the ref (the `mobile` branch or a `mobile-v*` tag) and the profile/platforms. It builds on EAS and, when **publish** is left on, submits those exact builds to TestFlight / Play internal testing after the build finishes. Untick **publish** for a build-only run. Preview builds are never submitted (internal-distribution artifacts aren't store-accepted).
+- **Tags:** the repo's tag namespace is shared with the desktop app — plain `v*` tags belong to `main`; mobile releases use `mobile-v<version>` (`git tag mobile-v1.0.0 && git push origin mobile-v1.0.0`). Nothing triggers on tags; they're bookmarks of what shipped, and the ref you pick for the release run.
 - **(Re)submit an existing build:** Actions → **Publish Mobile Store Releases** → same ref rules — pass explicit EAS build IDs, or it takes the latest finished build for the profile.
 - The copies of the two workflows on `main` only exist because GitHub reads the default branch for the Run-workflow button; a guard aborts runs on refs without the mobile release files.
 - Store version comes from package.json (via app.config.js); build numbers are EAS-managed (`autoIncrement`).

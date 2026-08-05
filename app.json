@@ -1,14 +1,18 @@
 {
   "expo": {
     "name": "Pear Snake",
-    "slug": "snake-mobile",
+    "slug": "snake",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "plugins": [
-      ["pear-runtime-react-native/plugin"],
-      ["./plugins/with-metro-port"],
+      [
+        "pear-runtime-react-native/plugin"
+      ],
+      [
+        "./plugins/with-metro-port"
+      ],
       [
         "expo-build-properties",
         {
@@ -25,7 +29,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.snake-mobile",
+      "bundleIdentifier": "com.anonymous.snake",
       "appleTeamId": "99564YDV39"
     },
     "android": {
@@ -34,10 +38,16 @@
         "backgroundColor": "#001601"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.snakemobile"
+      "package": "com.anonymous.snake"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "add0ac0a-2ac7-4fc4-9937-d2b5a01515c4"
+      }
+    },
+    "owner": "geordangesink"
   }
 }

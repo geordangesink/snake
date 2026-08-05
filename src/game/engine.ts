@@ -21,7 +21,6 @@ export class Player {
   id: string
   color: string
   game: SnakeGame
-  score = 0
   snake: Coord[] = []
   direction: Coord = { x: 0, y: 0 }
 
@@ -39,8 +38,7 @@ export class Player {
     }
     this.snake.unshift(head)
     const ate = head.x === food.x && head.y === food.y
-    if (ate) this.score++
-    else this.snake.pop()
+    if (!ate) this.snake.pop()
     return ate
   }
 

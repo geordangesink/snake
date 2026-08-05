@@ -51,6 +51,7 @@ export function GameScreen({
   ).current
 
   const [copied, setCopied] = useState(false)
+  const [showTopic, setShowTopic] = useState(false)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
@@ -85,6 +86,30 @@ export function GameScreen({
         </Pressable>
         <Text style={styles.peers}>Peers: {peers}</Text>
       </View>
+
+      <View style={styles.invite}>
+        <Pressable
+          onPress={copyTopic}
+          accessibilityRole='button'
+          accessibilityLabel='Copy game topic to clipboard'
+          style={({ pressed }) => [styles.inviteCopy, pressed && styles.invitePressed]}
+        >
+          <Text style={styles.inviteLabel}>Invite</Text>
+          <Text style={styles.inviteHint}>{copied ? '✓ copied' : 'tap to copy'}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setShowTopic((v) => !v)}
+          hitSlop={6}
+          style={({ pressed }) => [styles.inviteToggle, pressed && styles.invitePressed]}
+        >
+          <Text style={styles.inviteToggleText}>{showTopic ? 'Hide' : 'Show'}</Text>
+        </Pressable>
+      </View>
+      {showTopic && (
+        <Text style={styles.topic} selectable>
+          {topic}
+        </Text>
+      )}
 
       {standings.length > 1 ? (
         <View style={styles.leaderboard}>
@@ -123,21 +148,6 @@ export function GameScreen({
       <View style={styles.controls}>
         <DPad onDirection={onDirection} disabled={over} />
       </View>
-
-      <Pressable
-        onPress={copyTopic}
-        accessibilityRole='button'
-        accessibilityLabel='Copy game topic to clipboard'
-        style={({ pressed }) => [styles.details, pressed && styles.detailsActive]}
-      >
-        <View style={styles.detailsHeader}>
-          <Text style={styles.detailsLabel}>Topic (share to invite):</Text>
-          <Text style={styles.copyHint}>{copied ? '✓ Copied' : 'Tap to copy'}</Text>
-        </View>
-        <Text style={styles.topic} selectable>
-          {topic}
-        </Text>
-      </Pressable>
     </View>
   )
 }
@@ -147,7 +157,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12
+    padding: 12,
+    // the controls row centers itself in the space below the board; keeping
+    // bottom padding here would make the screen-edge gap larger than the
+    // board gap
+    paddingBottom: 0
   },
   header: {
     flexDirection: 'row',
@@ -219,6 +233,8 @@ const styles = StyleSheet.create({
   controls: {
     alignSelf: 'stretch',
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
     marginVertical: 8
   },
   overScore: {
@@ -259,29 +275,44 @@ const styles = StyleSheet.create({
     fontFamily: theme.mono,
     fontSize: 16
   },
-  details: {
-    marginTop: 16,
+  invite: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     alignSelf: 'stretch',
     borderWidth: 1,
     borderColor: theme.accent,
     backgroundColor: theme.panel,
-    padding: 10
+    marginBottom: 12
   },
-  detailsActive: {
-    opacity: 0.6
-  },
-  detailsHeader: {
+  inviteCopy: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4
+    paddingHorizontal: 10,
+    paddingVertical: 6
   },
-  detailsLabel: {
+  invitePressed: {
+    backgroundColor: 'rgba(176, 217, 68, 0.15)'
+  },
+  inviteLabel: {
     color: theme.accent,
+    fontFamily: theme.mono,
+    fontSize: 13
+  },
+  inviteHint: {
+    color: theme.accent,
+    opacity: 0.7,
     fontFamily: theme.mono,
     fontSize: 12
   },
-  copyHint: {
+  inviteToggle: {
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: theme.accent
+  },
+  inviteToggleText: {
     color: theme.accent,
     fontFamily: theme.mono,
     fontSize: 12
@@ -289,6 +320,8 @@ const styles = StyleSheet.create({
   topic: {
     color: theme.accent,
     fontFamily: theme.mono,
-    fontSize: 11
+    fontSize: 11,
+    alignSelf: 'stretch',
+    marginBottom: 12
   }
 })

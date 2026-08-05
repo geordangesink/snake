@@ -22,19 +22,13 @@ on:
         default: true
         type: boolean
       publish:
-        description: Also publish (submit to TestFlight / Google Play)
+        description: Publish after a successful build (production profile only — preview artifacts are not store-submittable)
         required: true
-        default: false
+        default: true
         type: boolean
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: read
-  # the called publish workflow requests actions: read (artifact download);
-  # a reusable workflow may not request more than its caller grants
-  actions: read
 
 concurrency:
   group: mobile-build-store-${{ github.ref }}
@@ -43,7 +37,7 @@ concurrency:
 jobs:
   build-ios:
     name: Build iOS (EAS)
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ios }}
+    if: ${{ inputs.build_ios }}
     runs-on: ubuntu-latest
     outputs:
       build_id: ${{ steps.capture.outputs.build_id }}
@@ -53,15 +47,15 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
       EAS_BUILD_NO_EXPO_GO_WARNING: 'true'
-      EAS_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'production' }}
+      EAS_PROFILE: ${{ inputs.profile }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Ensure mobile release files
         run: |
           if [ ! -f eas.json ]; then
-            echo "eas.json not found — this workflow must run from the mobile branch."
-            echo "Re-run it and pick 'mobile' in the Run workflow branch dropdown."
+            echo "eas.json not found — this workflow must run from the mobile branch or a mobile tag."
+            echo "Re-run it and pick 'mobile' (or a release tag) in the Run workflow ref dropdown."
             exit 1
           fi
 
@@ -143,7 +137,7 @@ jobs:
 
   build-android:
     name: Build Android (EAS)
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_android }}
+    if: ${{ inputs.build_android }}
     runs-on: ubuntu-latest
     outputs:
       build_id: ${{ steps.capture.outputs.build_id }}
@@ -153,15 +147,15 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
       EAS_BUILD_NO_EXPO_GO_WARNING: 'true'
-      EAS_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'production' }}
+      EAS_PROFILE: ${{ inputs.profile }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Ensure mobile release files
         run: |
           if [ ! -f eas.json ]; then
-            echo "eas.json not found — this workflow must run from the mobile branch."
-            echo "Re-run it and pick 'mobile' in the Run workflow branch dropdown."
+            echo "eas.json not found — this workflow must run from the mobile branch or a mobile tag."
+            echo "Re-run it and pick 'mobile' (or a release tag) in the Run workflow ref dropdown."
             exit 1
           fi
 
@@ -239,13 +233,10 @@ jobs:
           if-no-files-found: error
 
   publish:
-    # Tag pushes are published by the workflow_run trigger in publish-store.yml
-    # (which must live on the default branch); this inline call covers only the
-    # manual "also publish" dispatch path.
     name: Publish
     needs: [build-ios, build-android]
     if: >-
-      ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.publish &&
+      ${{ !cancelled() && inputs.publish && inputs.profile == 'production' &&
           needs.build-ios.result != 'failure' && needs.build-android.result != 'failure' &&
           (needs.build-ios.result == 'success' || needs.build-android.result == 'success') }}
     uses: ./.github/workflows/publish-store.yml
@@ -279,5 +270,5 @@ jobs:
               echo "- Android build: ${{ needs.build-android.result }}"
             fi
             echo ""
-            echo "Publish: ${{ github.event_name != 'workflow_dispatch' && 'automatic (tag push chains into the publish workflow)' || inputs.publish }}"
+            echo "Publish requested: ${{ inputs.publish }}"
           } | tee -a "$GITHUB_STEP_SUMMARY"

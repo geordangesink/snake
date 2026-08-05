@@ -1,0 +1,49 @@
+# Shim: registers the workflow and its Run-workflow form on the default
+# branch. The real workflow lives on the mobile branch — GitHub executes the
+# file from the ref picked in the Run-workflow dropdown, so select 'mobile'
+# (or a mobile release tag) there. Keep name/triggers/inputs in sync with
+# the mobile branch's copy.
+name: Publish Mobile Store Releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS submit profile
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - preview
+      submit_ios:
+        description: Submit iOS
+        required: true
+        default: true
+        type: boolean
+      submit_android:
+        description: Submit Android
+        required: true
+        default: true
+        type: boolean
+      ios_build_id:
+        description: Optional explicit iOS EAS build ID (defaults to the latest finished build for the profile)
+        required: false
+        type: string
+      android_build_id:
+        description: Optional explicit Android EAS build ID (defaults to the latest finished build for the profile)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  wrong-ref:
+    name: Wrong ref — run this on mobile
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "This ref only carries a shim of the workflow."
+          echo "Re-run and pick 'mobile' (or a mobile release tag) in the Run workflow ref dropdown."
+          exit 1

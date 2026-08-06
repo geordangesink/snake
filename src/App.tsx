@@ -1,9 +1,18 @@
 /* global __DEV__ */
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { Dimensions, SafeAreaView, StyleSheet, Text, View } from 'react-native'
+import {
+  Dimensions,
+  Platform,
+  SafeAreaView,
+  StatusBar as NativeStatusBar,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { reloadAppAsync } from 'expo-modules-core'
+import * as SplashScreen from 'expo-splash-screen'
 import PearRuntime from 'pear-mobile'
 import FramedStream from 'framed-stream'
 import b4a from 'b4a'
@@ -15,9 +24,14 @@ import { TILES, Direction } from './game/constants'
 import { SetupScreen } from './screens/SetupScreen'
 import { GameScreen } from './screens/GameScreen'
 import { UpdateBanner, UpdateStatus } from './components/UpdateBanner'
+import { AnimatedSplash } from './components/AnimatedSplash'
 import { theme } from './theme'
 
 const appName = productName ?? name
+
+// Hold the native splash until the AnimatedSplash overlay has painted its
+// first frame — otherwise there is a flash of bare root view in between.
+SplashScreen.preventAutoHideAsync().catch(() => {})
 
 // Board edge rounded down to a whole number of tiles so every cell is crisp.
 const win = Dimensions.get('window')
@@ -33,6 +47,7 @@ export default function App() {
   const [over, setOver] = useState(false)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('')
   const [error, setError] = useState('')
+  const [splashDone, setSplashDone] = useState(false)
   const [renderCount, forceRender] = useReducer((n: number) => n + 1, 0)
 
   const pipeRef = useRef<FramedStream | null>(null)
@@ -190,6 +205,8 @@ export default function App() {
           }}
         />
       )}
+
+      {!splashDone && <AnimatedSplash onDone={() => setSplashDone(true)} />}
     </SafeAreaView>
   )
 }
@@ -197,7 +214,9 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background
+    backgroundColor: theme.background,
+    // RN's SafeAreaView only insets on iOS; on Android pad below the status bar
+    paddingTop: Platform.OS === 'android' ? (NativeStatusBar.currentHeight ?? 0) : 0
   },
   centered: {
     flex: 1,

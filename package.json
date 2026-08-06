@@ -44,6 +44,7 @@
     "expo-build-properties": "~55.0.10",
     "expo-clipboard": "~55.0.15",
     "expo-modules-core": "^55.0.17",
+    "expo-splash-screen": "~55.0.23",
     "expo-status-bar": "~55.0.4",
     "expo-system-ui": "~55.0.10",
     "framed-stream": "^1.0.1",

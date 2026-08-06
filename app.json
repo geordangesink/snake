@@ -6,13 +6,10 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "backgroundColor": "#001601",
     "plugins": [
-      [
-        "pear-runtime-react-native/plugin"
-      ],
-      [
-        "./plugins/with-metro-port"
-      ],
+      ["pear-runtime-react-native/plugin"],
+      ["./plugins/with-metro-port"],
       [
         "expo-build-properties",
         {

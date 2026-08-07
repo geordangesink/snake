@@ -116,6 +116,10 @@ export default function App() {
           setUpdateStatus('')
         }
         break
+      case 'updateFailed':
+        setError(msg.error || '')
+        setUpdateStatus('failed')
+        break
       case 'ready':
         setTopic(msg.topic)
         game.start(msg.id, b4a.from(msg.topic, 'hex'))

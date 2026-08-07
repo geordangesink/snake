@@ -91,9 +91,15 @@ pipe.on('data', async (data) => {
       peer.write(msg.data)
     }
   } else if (msg.type === 'applyUpdate') {
-    await pear.ready()
-    await pear.updater.applyUpdate()
-    send({ type: 'updateApplied' })
+    // Report failures back: without this a throw here is swallowed by the async
+    // handler and the banner sits on "Applying..." forever with no reason given.
+    try {
+      await pear.ready()
+      await pear.updater.applyUpdate()
+      send({ type: 'updateApplied' })
+    } catch (err) {
+      send({ type: 'updateFailed', error: err.message })
+    }
   }
 })
 

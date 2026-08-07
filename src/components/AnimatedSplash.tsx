@@ -10,16 +10,25 @@ import {
 } from 'react-native'
 import * as SplashScreen from 'expo-splash-screen'
 import { theme } from '../theme'
+import { version } from '../../package.json'
 import { SPLASH_RECTS, SPLASH_VIEWBOX } from './splash-rects'
 
 // Boot animation: the snake glyph draws itself in bar by bar from tail to
 // head, flicks its tongue, and 'PEAR SNAKE' types out under a blinking block
-// cursor before the whole overlay fades into the app.
+// cursor, the running version fades in beneath it, and the whole overlay then
+// fades into the app.
+//
+// The native splash under this overlay is deliberately just the background
+// color (see the expo-splash-screen plugin config in app.json): Android 12+
+// always clips its splash icon into a ~192dp circle at a fixed size, so a
+// static logo there can never line up with this full-screen layout. An empty
+// background is frame 0 of this animation, which makes the handoff invisible.
 
 const TITLE = 'PEAR SNAKE'
 const DRAW_MS = 1250
 const TYPE_START_MS = 900
 const TYPE_CHAR_MS = 55
+const TYPE_END_MS = TYPE_START_MS + TITLE.length * TYPE_CHAR_MS
 const HOLD_MS = 550
 const FADE_MS = 320
 
@@ -33,6 +42,7 @@ export function AnimatedSplash({ onDone }: Props) {
   const progress = useRef(new Animated.Value(0)).current
   const tongue = useRef(new Animated.Value(0)).current
   const cursor = useRef(new Animated.Value(1)).current
+  const stamp = useRef(new Animated.Value(0)).current
   const fade = useRef(new Animated.Value(1)).current
   const [chars, setChars] = useState(0)
 
@@ -62,6 +72,7 @@ export function AnimatedSplash({ onDone }: Props) {
       if (reduced) {
         progress.setValue(1)
         tongue.setValue(1)
+        stamp.setValue(1)
         setChars(TITLE.length)
         finish(700)
         return
@@ -85,7 +96,11 @@ export function AnimatedSplash({ onDone }: Props) {
       for (let i = 1; i <= TITLE.length; i++) {
         later(() => setChars(i), TYPE_START_MS + i * TYPE_CHAR_MS)
       }
-      finish(Math.max(DRAW_MS + 420, TYPE_START_MS + TITLE.length * TYPE_CHAR_MS) + HOLD_MS)
+      // version fades in once the title has finished typing
+      later(() => {
+        Animated.timing(stamp, { toValue: 1, duration: 260, useNativeDriver: true }).start()
+      }, TYPE_END_MS + 120)
+      finish(Math.max(DRAW_MS + 420, TYPE_END_MS + 380) + HOLD_MS)
     })
 
     return () => {
@@ -137,6 +152,14 @@ export function AnimatedSplash({ onDone }: Props) {
             <Text style={styles.title}>{TITLE.slice(0, chars)}</Text>
             <Animated.Text style={[styles.title, { opacity: cursor }]}>█</Animated.Text>
           </View>
+          <Animated.Text
+            style={[
+              styles.version,
+              { opacity: stamp.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) }
+            ]}
+          >
+            v{version}
+          </Animated.Text>
         </View>
       </View>
     </Animated.View>
@@ -163,5 +186,16 @@ const styles = StyleSheet.create({
     fontFamily: theme.mono,
     fontSize: 20,
     letterSpacing: 3
+  },
+  version: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: ICON + 56,
+    textAlign: 'center',
+    color: theme.accent,
+    fontFamily: theme.mono,
+    fontSize: 11,
+    letterSpacing: 2
   }
 })

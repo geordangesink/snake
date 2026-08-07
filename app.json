@@ -10,6 +10,7 @@
     "plugins": [
       ["pear-runtime-react-native/plugin"],
       ["./plugins/with-metro-port"],
+      ["./plugins/with-pear-ota-android"],
       [
         "expo-build-properties",
         {
@@ -17,13 +18,16 @@
             "minSdkVersion": 29
           }
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#001601",
+          "image": "./assets/splash-blank.png",
+          "imageWidth": 200
+        }
       ]
     ],
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#001601"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.snake",

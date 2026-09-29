@@ -91,7 +91,10 @@ async function joinGame(topicHex) {
   const id = b4a.toString(gameSwarm.keyPair.publicKey, 'hex').slice(0, 6)
   joined = topicBuffer
   const discovery = gameSwarm.join(topicBuffer, { client: true, server: true })
-  await discovery.flushed()
+  discovery
+    .flushed()
+    .then((flushed) => anounceFlushed(flushed, topicBuffer))
+    .catch(console.error)
   send({ type: 'ready', id, topic })
 }
 
@@ -128,6 +131,11 @@ pipe.on('data', async (data) => {
     }
   }
 })
+
+function anounceFlushed(flushed, topicBuffer) {
+  if (!flushed || joined !== topicBuffer) return
+  send({ type: 'flushed', topic: b4a.toString(topicBuffer, 'hex') })
+}
 
 goodbye(async () => {
   await gameSwarm.destroy()

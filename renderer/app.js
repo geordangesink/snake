@@ -7,7 +7,7 @@ const encoder = new TextEncoder()
 runSplash(bridge.pkg().version)
 
 const pearImage = new Image()
-pearImage.src = '../assets/pear.png'
+pearImage.src = '../assets/dave.png'
 
 const WORKER = '/workers/main.js'
 

@@ -7,7 +7,7 @@ const encoder = new TextEncoder()
 runSplash(bridge.pkg().version)
 
 const pearImage = new Image()
-pearImage.src = '../assets/dave.png'
+pearImage.src = '../assets/pear.png'
 
 const WORKER = '/workers/main.js'
 
@@ -18,11 +18,12 @@ function sendToWorker(msg) {
 bridge.startWorker(WORKER)
 
 let shouldReload = false
-let joinCode = { topic: '', flushed: false }
+let joinCode = { topic: '', status: 'announcing' }
 
 function renderJoinCode() {
-  const { topic, flushed } = joinCode
-  document.querySelector('#game-topic').textContent = topic && (flushed ? topic : 'announcing...')
+  const { topic, status } = joinCode
+  document.querySelector('#game-topic').textContent = topic
+  document.querySelector('#game-status').textContent = topic && status
 }
 
 function showUpdating() {
@@ -76,14 +77,14 @@ bridge.onWorkerIPC(WORKER, (data) => {
     showUpdateFailed(msg.error)
   } else if (msg.type === 'ready') {
     const topicBuffer = hexToBytes(msg.topic)
-    joinCode = { topic: msg.topic, flushed: false }
+    joinCode = { topic: msg.topic, status: 'announcing' }
     renderJoinCode()
     document.querySelector('#loading').classList.add('hidden')
     document.querySelector('#game').classList.remove('hidden')
     hideGameOver()
     game.start(msg.id, topicBuffer)
   } else if (msg.type === 'flushed' && msg.topic === joinCode.topic) {
-    joinCode.flushed = true
+    joinCode.status = 'online'
     renderJoinCode()
   } else if (msg.type === 'connected') {
     game.addPeer(msg.id)
@@ -135,7 +136,7 @@ function joinGame(e) {
 }
 
 function leaveGame() {
-  joinCode = { topic: '', flushed: false }
+  joinCode = { topic: '', status: 'announcing' }
   renderJoinCode()
   sendToWorker({ type: 'leave' })
   document.querySelector('pear-snake').leave()

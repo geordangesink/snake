@@ -46,6 +46,7 @@ pear.updater.on('updated', () => send({ type: 'updated' }))
 const gameSwarm = new Hyperswarm()
 
 let joined = null
+let announceRetry = null
 let commands = Promise.resolve()
 
 function enqueue(fn) {
@@ -91,14 +92,32 @@ async function joinGame(topicHex) {
   const id = b4a.toString(gameSwarm.keyPair.publicKey, 'hex').slice(0, 6)
   joined = topicBuffer
   const discovery = gameSwarm.join(topicBuffer, { client: true, server: true })
-  discovery
-    .flushed()
-    .then((flushed) => anounceFlushed(flushed, topicBuffer))
-    .catch(console.error)
   send({ type: 'ready', id, topic })
+  announceGame(discovery, topicBuffer).catch(console.error)
+}
+
+async function announceGame(discovery, topicBuffer, refresh = false) {
+  if (joined !== topicBuffer) return
+  let announced = false
+  try {
+    announced = refresh ? (await discovery.refresh()) !== false : await discovery.flushed()
+  } catch (err) {
+    console.error(err)
+  }
+  if (joined !== topicBuffer) return
+  if (announced) {
+    send({ type: 'flushed', topic: b4a.toString(topicBuffer, 'hex') })
+    return
+  }
+  announceRetry = setTimeout(() => {
+    announceRetry = null
+    announceGame(discovery, topicBuffer, true).catch(console.error)
+  }, 5000)
 }
 
 async function leaveGame() {
+  clearTimeout(announceRetry)
+  announceRetry = null
   if (joined === null) return
   const topic = joined
   joined = null
@@ -132,12 +151,8 @@ pipe.on('data', async (data) => {
   }
 })
 
-function anounceFlushed(flushed, topicBuffer) {
-  if (!flushed || joined !== topicBuffer) return
-  send({ type: 'flushed', topic: b4a.toString(topicBuffer, 'hex') })
-}
-
 goodbye(async () => {
+  await leaveGame()
   await gameSwarm.destroy()
   await updaterSwarm.destroy()
   await pear.close()

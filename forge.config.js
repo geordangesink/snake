@@ -29,6 +29,27 @@ const packagerConfig = {
   derefSymlinks: true
 }
 
+if (process.env.MAC_CODESIGN_IDENTITY) {
+  for (const variable of ['MACOS_ENTITLEMENTS', 'KEYCHAIN_PATH', 'KEYCHAIN_PROFILE']) {
+    if (!process.env[variable]) throw new Error(`Missing signing setting: ${variable}`)
+  }
+  packagerConfig.osxSign = {
+    identity: process.env.MAC_CODESIGN_IDENTITY,
+    keychain: process.env.KEYCHAIN_PATH,
+    preAutoEntitlements: false,
+    preEmbedProvisioningProfile: false,
+    gatekeeperAssess: false,
+    optionsForFile: () => ({
+      entitlements: process.env.MACOS_ENTITLEMENTS,
+      hardenedRuntime: true
+    })
+  }
+  packagerConfig.osxNotarize = {
+    keychainProfile: process.env.KEYCHAIN_PROFILE,
+    keychain: process.env.KEYCHAIN_PATH
+  }
+}
+
 module.exports = {
   packagerConfig,
 
@@ -36,7 +57,13 @@ module.exports = {
     {
       name: '@electron-forge/maker-dmg',
       platforms: ['darwin'],
-      config: {}
+      config: process.env.MAC_CODESIGN_IDENTITY
+        ? {
+            additionalDMGOptions: {
+              'code-sign': { 'signing-identity': process.env.MAC_CODESIGN_IDENTITY }
+            }
+          }
+        : {}
     },
     {
       name: '@electron-forge/maker-msix',
@@ -45,7 +72,9 @@ module.exports = {
         appManifest: path.join(__dirname, 'build', 'AppxManifest.xml'),
         packageAssets: path.join(__dirname, 'build'),
         windowsKitVersion: getWindowsKitVersion(),
-        sign: false
+        ...(process.env.WINDOWS_SIGN_HOOK
+          ? { windowsSignOptions: { hookModulePath: process.env.WINDOWS_SIGN_HOOK } }
+          : { sign: false })
       }
     },
     {
